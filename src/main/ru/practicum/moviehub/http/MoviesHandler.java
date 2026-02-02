@@ -23,6 +23,26 @@ public class MoviesHandler extends BaseHttpHandler {
     private static final int MIN_MOVIE_YEAR = 1888;
     private static final int MAX_MOVIE_YEAR = LocalDate.now().getYear() + 1;
 
+    public static final String ERROR_400_WRONG_YEAR = "Некорректный параметр запроса — 'year'";
+    public static final String ERROR_400_WRONG_YEAR_DESCRIPTION_1 = "Поддерживается только параметр year";
+    public static final String ERROR_400_WRONG_YEAR_DESCRIPTION_2 = "year должен быть числом";
+    public static final String ERROR_400_INCORRECT_ID = "Некорректный ID";
+    public static final String ERROR_400_INCORRECT_ID_DESCRIPTION = "ID должен быть числом";
+    public static final String ERROR_400_INCORRECT_JSON = "Некорректный JSON";
+    public static final String ERROR_400_INCORRECT_JSON_DESCRIPTION = "Тело запроса должно быть корректным JSON";
+    public static final String ERROR_404_MOVIE_NOT_FOUND = "Фильм не найден";
+    public static final String ERROR_404_INCORRECT_QUERY = "Некорректный запрос";
+    public static final String ERROR_405_WRONG_METHOD = "Метод не поддерживается";
+    public static final String ERROR_405_WRONG_METHOD_DESCRIPTION = "Допустимые методы: GET, POST, DELETE";
+    public static final String ERROR_405_WRONG_PATH = "Путь не поддерживается";
+    public static final String ERROR_405_WRONG_PATH_DESCRIPTION = "Допустимый путь: /movies";
+    public static final String ERROR_415_UNSUPPORTED_DATA_TYPE = "Неподдерживаемый тип данных";
+    public static final String ERROR_415_UNSUPPORTED_DATA_TYPE_DESCRIPTION = "Ожидается тип данных формата json";
+    public static final String ERROR_422_VALIDATION = "Ошибка валидации";
+    public static final String ERROR_422_VALIDATION_TITLE_EMPTY = "Название не должно быть пустым";
+    public static final String ERROR_422_VALIDATION_TITLE_LONG = "Длина названия не должна превышать " + MAX_MOVIE_TITLE_LENGTH + " символов";
+    public static final String ERROR_422_VALIDATION_YEAR = "Год должен быть числом между " + MIN_MOVIE_YEAR + " и " + MAX_MOVIE_YEAR;
+
     private final MoviesStore store;
 
     public MoviesHandler(MoviesStore store) {
@@ -44,13 +64,13 @@ public class MoviesHandler extends BaseHttpHandler {
                     handleDelete(ex, queryParts);
                     break;
                 default:
-                    sendJson(ex, 405, new ErrorResponse("Метод не поддерживается",
-                        List.of("Допустимые методы: GET, POST, DELETE")));
+                    sendJson(ex, 405, new ErrorResponse(ERROR_405_WRONG_METHOD,
+                        List.of(ERROR_405_WRONG_METHOD_DESCRIPTION)));
                     break;
             }
         } else {
-            sendJson(ex, 405, new ErrorResponse("Путь не поддерживается",
-                List.of("Допустимый путь: /movies")));
+            sendJson(ex, 405, new ErrorResponse(ERROR_405_WRONG_PATH,
+                List.of(ERROR_405_WRONG_PATH_DESCRIPTION)));
         }
     }
 
@@ -58,33 +78,46 @@ public class MoviesHandler extends BaseHttpHandler {
         Map<String, String> queryParams = getQueryParams(ex);
 
         if (queryParts.length == 3) {
-            try {
-                Movie movie = store.getMovieById(Integer.parseInt(queryParts[2]));
-                if (movie == null) {
-                    sendJson(ex, 404, new ErrorResponse("Фильм не найден"));
-                } else {
-                    sendJson(ex, 200, movie);
-                }
-            } catch (NumberFormatException e) {
-                sendJson(ex, 400, new ErrorResponse("Некорректный ID", List.of("ID должен быть числом")));
-            }
+            getMovieById(ex, queryParts[2]);
         } else if (queryParams.isEmpty()) {
             sendJson(ex, 200, store.getAllMovies());
         } else if (queryParams.containsKey("year")) {
-            try {
-                sendJson(ex, 200, store.getMoviesByYear(Integer.parseInt(queryParams.get("year"))));
-            } catch (NumberFormatException e) {
-                sendJson(ex, 400, new ErrorResponse("Некорректный параметр запроса — 'year'",
-                    List.of("year должен быть числом")));
-            }
+            getMoviesByYear(ex, queryParams.get("year"));
         } else {
-            sendJson(ex, 400, new ErrorResponse("Некорректный параметр запроса — 'year'",
-                List.of("Поддерживается только параметр year", "year должен быть числом")));
+            sendJson(ex, 400, new ErrorResponse(ERROR_400_WRONG_YEAR,
+                List.of(ERROR_400_WRONG_YEAR_DESCRIPTION_1, ERROR_400_WRONG_YEAR_DESCRIPTION_2)));
+        }
+    }
+
+    private void getMovieById(HttpExchange ex, String id) throws IOException {
+        try {
+            Movie movie = store.getMovieById(Integer.parseInt(id));
+            if (movie == null) {
+                sendJson(ex, 404, new ErrorResponse(ERROR_404_MOVIE_NOT_FOUND));
+            } else {
+                sendJson(ex, 200, movie);
+            }
+        } catch (NumberFormatException e) {
+            sendJson(ex, 400, new ErrorResponse(ERROR_400_INCORRECT_ID,
+                List.of(ERROR_400_INCORRECT_ID_DESCRIPTION)));
+        }
+    }
+
+    private void getMoviesByYear(HttpExchange ex, String year) throws IOException {
+        try {
+            sendJson(ex, 200, store.getMoviesByYear(Integer.parseInt(year)));
+        } catch (NumberFormatException e) {
+            sendJson(ex, 400, new ErrorResponse(ERROR_400_WRONG_YEAR,
+                List.of(ERROR_400_WRONG_YEAR_DESCRIPTION_2)));
         }
     }
 
     private void handlePost(HttpExchange ex) throws IOException {
-        if (ex.getRequestHeaders().getFirst("Content-Type").equalsIgnoreCase("application/json; charset=UTF-8")) {
+        if (ex.getRequestHeaders().getFirst("Content-Type") == null ||
+                !ex.getRequestHeaders().getFirst("Content-Type").equalsIgnoreCase("application/json; charset=UTF-8")) {
+            sendJson(ex, 415, new ErrorResponse(ERROR_415_UNSUPPORTED_DATA_TYPE,
+                List.of(ERROR_415_UNSUPPORTED_DATA_TYPE_DESCRIPTION)));
+        } else {
             String requestBody = new String(ex.getRequestBody().readAllBytes());
             JsonElement jsonElement = JsonParser.parseString(requestBody);
             if (jsonElement.isJsonObject()) {
@@ -92,32 +125,29 @@ public class MoviesHandler extends BaseHttpHandler {
                 String title = jsonObject.get("title").getAsString().trim();
 
                 if (title.isEmpty()) {
-                    sendJson(ex, 422, new ErrorResponse("Ошибка валидации",
-                            List.of("Название не должно быть пустым")));
+                    sendJson(ex, 422, new ErrorResponse(ERROR_422_VALIDATION,
+                            List.of(ERROR_422_VALIDATION_TITLE_EMPTY)));
                 } else if (title.length() > MAX_MOVIE_TITLE_LENGTH) {
-                    sendJson(ex, 422, new ErrorResponse("Ошибка валидации",
-                            List.of("Длина названия не должна превышать " + MAX_MOVIE_TITLE_LENGTH + " символов")));
+                    sendJson(ex, 422, new ErrorResponse(ERROR_422_VALIDATION,
+                            List.of(ERROR_422_VALIDATION_TITLE_LONG)));
                 } else {
                     try {
                         int year = Integer.parseInt(jsonObject.get("year").getAsString().trim());
                         if (year < MIN_MOVIE_YEAR || year > MAX_MOVIE_YEAR) {
-                            sendJson(ex, 422, new ErrorResponse("Ошибка валидации",
-                                List.of("Год должен быть числом между " + MIN_MOVIE_YEAR + " и " + MAX_MOVIE_YEAR)));
+                            sendJson(ex, 422, new ErrorResponse(ERROR_422_VALIDATION,
+                                List.of(ERROR_422_VALIDATION_YEAR)));
                         } else {
                             sendJson(ex, 201, store.addMovie(title, year));
                         }
                     } catch (NumberFormatException e) {
-                        sendJson(ex, 422, new ErrorResponse("Ошибка валидации",
-                            List.of("Год должен быть числом между " + MIN_MOVIE_YEAR + " и " + MAX_MOVIE_YEAR)));
+                        sendJson(ex, 422, new ErrorResponse(ERROR_422_VALIDATION,
+                            List.of(ERROR_422_VALIDATION_YEAR)));
                     }
                 }
             } else {
-                sendJson(ex, 400, new ErrorResponse("Некорректный JSON",
-                    List.of("Тело запроса должно быть корректным JSON")));
+                sendJson(ex, 400, new ErrorResponse(ERROR_400_INCORRECT_JSON,
+                    List.of(ERROR_400_INCORRECT_JSON_DESCRIPTION)));
             }
-        } else {
-            sendJson(ex, 415, new ErrorResponse("Неподдерживаемый тип данных",
-                List.of("Ожидается тип данных формата json")));
         }
     }
 
@@ -127,13 +157,14 @@ public class MoviesHandler extends BaseHttpHandler {
                 if (store.deleteMovieById(Integer.parseInt(queryParts[2]))) {
                     sendNoContent(ex);
                 } else {
-                    sendJson(ex, 404, new ErrorResponse("Фильм не найден"));
+                    sendJson(ex, 404, new ErrorResponse(ERROR_404_MOVIE_NOT_FOUND));
                 }
             } catch (NumberFormatException e) {
-                sendJson(ex, 400, new ErrorResponse("Некорректный ID", List.of("ID должен быть числом")));
+                sendJson(ex, 400, new ErrorResponse(ERROR_400_INCORRECT_ID,
+                    List.of(ERROR_400_INCORRECT_ID_DESCRIPTION)));
             }
         } else {
-            sendJson(ex, 404, new ErrorResponse("Некорректный запрос"));
+            sendJson(ex, 404, new ErrorResponse(ERROR_404_INCORRECT_QUERY));
         }
     }
 

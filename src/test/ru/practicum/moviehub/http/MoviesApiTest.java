@@ -127,7 +127,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
             "Content-Type должен содержать формат данных и кодировку");
         assertEquals(422, resp.statusCode(), "Статус должен быть 422 (POST /movies)");
-        assertTrue(resp.body().contains("Название не должно быть пустым"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_422_VALIDATION_TITLE_EMPTY));
     }
 
     @Test
@@ -144,7 +144,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
             "Content-Type должен содержать формат данных и кодировку");
         assertEquals(422, resp.statusCode(), "Статус должен быть 422 (POST /movies)");
-        assertTrue(resp.body().contains("Длина названия не должна превышать"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_422_VALIDATION_TITLE_LONG));
     }
 
     @Test
@@ -161,7 +161,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
             "Content-Type должен содержать формат данных и кодировку");
         assertEquals(422, resp.statusCode(), "Статус должен быть 422 (POST /movies)");
-        assertTrue(resp.body().contains("Год должен быть числом между"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_422_VALIDATION_YEAR));
     }
 
     @Test
@@ -178,7 +178,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
             "Content-Type должен содержать формат данных и кодировку");
         assertEquals(422, resp.statusCode(), "Статус должен быть 422 (POST /movies)");
-        assertTrue(resp.body().contains("Год должен быть числом между"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_422_VALIDATION_YEAR));
     }
 
     @Test
@@ -195,7 +195,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
                 "Content-Type должен содержать формат данных и кодировку");
         assertEquals(415, resp.statusCode(), "Статус должен быть 415 (POST /movies)");
-        assertTrue(resp.body().contains("Ожидается тип данных формата json"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_415_UNSUPPORTED_DATA_TYPE_DESCRIPTION));
     }
 
     @Test
@@ -212,7 +212,7 @@ public class MoviesApiTest {
         assertEquals(CT_JSON, resp.headers().firstValue("Content-Type").orElse(""),
                 "Content-Type должен содержать формат данных и кодировку");
         assertEquals(400, resp.statusCode(), "Статус должен быть 400 (POST /movies)");
-        assertTrue(resp.body().contains("Тело запроса должно быть корректным JSON"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_400_INCORRECT_JSON_DESCRIPTION));
     }
 
     @Test
@@ -244,7 +244,7 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(404, resp.statusCode(), "Статус должен быть 404 (GET /movies/{id})");
-        assertTrue(resp.body().contains("Фильм не найден"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_404_MOVIE_NOT_FOUND));
     }
 
     @Test
@@ -257,7 +257,7 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(400, resp.statusCode(), "Статус должен быть 400 (GET /movies/{id})");
-        assertTrue(resp.body().contains("Некорректный ID"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_400_INCORRECT_ID));
     }
 
     @Test
@@ -285,7 +285,7 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(404, resp.statusCode(), "Статус должен быть 404 (DELETE /movies/{id})");
-        assertTrue(resp.body().contains("Фильм не найден"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_404_MOVIE_NOT_FOUND));
     }
 
     @Test
@@ -298,7 +298,7 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(400, resp.statusCode(), "Статус должен быть 400 (DELETE /movies/{id})");
-        assertTrue(resp.body().contains("Некорректный ID"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_400_INCORRECT_ID));
     }
 
     @Test
@@ -331,7 +331,7 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(400, resp.statusCode(), "Статус должен быть 400 (GET /movies?year=)");
-        assertTrue(resp.body().contains("year должен быть числом"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_400_WRONG_YEAR_DESCRIPTION_2));
     }
 
     @Test
@@ -369,6 +369,6 @@ public class MoviesApiTest {
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
         assertEquals(405, resp.statusCode(), "Статус должен быть 405");
-        assertTrue(resp.body().contains("Допустимые методы: GET, POST, DELETE"));
+        assertTrue(resp.body().contains(MoviesHandler.ERROR_405_WRONG_METHOD_DESCRIPTION));
     }
 }
